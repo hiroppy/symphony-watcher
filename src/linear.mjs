@@ -11,6 +11,11 @@ const ISSUE_STATE_QUERY = `
         name
         type
       }
+      attachments {
+        nodes {
+          url
+        }
+      }
       url
     }
   }
@@ -51,16 +56,37 @@ export async function fetchLinearIssueState(issueIdentifier, options = {}) {
 
       if (!issue) return null;
 
+      const pullRequest = findPullRequestAttachment(issue.attachments?.nodes);
+
       return {
         identifier: issue.identifier,
         title: issue.title ?? null,
         state: issue.state?.name ?? null,
         stateType: issue.state?.type ?? null,
         url: issue.url ?? null,
+        ...(pullRequest ? { pullRequest } : {}),
       };
     } catch {
       if (attempt >= maxAttempts) return null;
       await sleep(retryDelayMs);
+    }
+  }
+
+  return null;
+}
+
+function findPullRequestAttachment(attachments) {
+  if (!Array.isArray(attachments)) return null;
+
+  for (const attachment of attachments) {
+    const url = attachment?.url;
+    const match = String(url).match(/^https:\/\/github\.com\/[^/]+\/[^/]+\/pull\/(\d+)(?:$|[/?#])/i);
+
+    if (match) {
+      return {
+        url,
+        number: Number(match[1]),
+      };
     }
   }
 

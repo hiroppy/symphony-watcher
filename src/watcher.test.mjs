@@ -170,6 +170,67 @@ describe("runOnce", () => {
     }
   });
 
+  it("includes a pull request attached to the Linear issue", async (context) => {
+    const dir = await mkdtemp(join(tmpdir(), "orchestrator-watcher-"));
+    const statePath = join(dir, "state.json");
+    const current = {
+      running: [{ issue_identifier: "ENG-67", state: "In Review" }],
+      retrying: [],
+      blocked: [],
+    };
+
+    await writeFile(statePath, "{}");
+    const nativeFetch = globalThis.fetch;
+    context.mock.method(globalThis, "fetch", async (url, options) => {
+      if (String(url).startsWith("data:")) return nativeFetch(url, options);
+
+      return new Response(
+        JSON.stringify({
+          data: {
+            issue: {
+              identifier: "ENG-67",
+              title: "Include attached pull requests",
+              state: { name: "In Review", type: "started" },
+              url: "https://linear.app/example/issue/ENG-67/example",
+              attachments: {
+                nodes: [{ url: "https://github.com/example/example-service/pull/456" }],
+              },
+            },
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    });
+
+    try {
+      const originalLog = console.log;
+      const lines = [];
+      console.log = (line) => lines.push(line);
+
+      try {
+        await runOnce({
+          config: {
+            services: [{ name: "serviceA", url: `data:application/json,${encodeURIComponent(JSON.stringify(current))}` }],
+            linearApiKey: "lin_test",
+          },
+          statePath,
+          dryRun: true,
+        });
+      } finally {
+        console.log = originalLog;
+      }
+
+      const output = JSON.parse(lines[0]);
+      assert.deepEqual(output.event.pullRequest, {
+        url: "https://github.com/example/example-service/pull/456",
+        number: 456,
+      });
+      assert.match(output.slack.attachments[0].blocks[1].text.text, /\*PR:\* <https:\/\/github\.com\/example\/example-service\/pull\/456\|#456>/);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("tries Linear at most twice by default for ended events", async (context) => {
     const dir = await mkdtemp(join(tmpdir(), "orchestrator-watcher-"));
     const statePath = join(dir, "state.json");

@@ -47,6 +47,37 @@ describe("fetchLinearIssueState", () => {
     assert.equal(result, null);
   });
 
+  it("returns a GitHub pull request attached to the Linear issue", async (context) => {
+    context.mock.method(globalThis, "fetch", async () => new Response(
+      JSON.stringify({
+        data: {
+          issue: {
+            identifier: "ENG-67",
+            title: "Include attached pull requests",
+            state: { name: "In Review", type: "started" },
+            url: "https://linear.app/example/issue/ENG-67/example",
+            attachments: {
+              nodes: [
+                { url: "https://example.com/design/67" },
+                { url: "https://github.com/example/example-service/pull/456" },
+              ],
+            },
+          },
+        },
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    ));
+
+    const result = await fetchLinearIssueState("ENG-67", {
+      apiKey: "lin_test",
+    });
+
+    assert.deepEqual(result.pullRequest, {
+      url: "https://github.com/example/example-service/pull/456",
+      number: 456,
+    });
+  });
+
   it("retries transient Linear failures before falling back", async (context) => {
     let attempts = 0;
     context.mock.method(globalThis, "fetch", async () => {

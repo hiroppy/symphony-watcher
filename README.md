@@ -1,8 +1,8 @@
 # Orchestrator Slack Watcher
 
 Polls orchestrator observability endpoints and posts state changes to Slack without modifying the source services.
-Slack messages include the Linear issue title and URL when `LINEAR_API_KEY` is configured. When the event has a `workspace_path`, the watcher also
-tries `gh pr view` in that workspace and includes the current branch PR URL when available.
+Slack messages include the Linear issue title and URL when `LINEAR_API_KEY` is configured. The watcher also includes a GitHub pull request attached
+to the Linear issue. When the event has a `workspace_path`, it first tries `gh pr view` in that workspace and uses the attached Linear resource as a fallback.
 
 ## Usage
 
@@ -45,7 +45,7 @@ The notification body intentionally stays compact:
 
 - `Event` (the watcher transition that triggered the notification)
 - `Linear` issue identifier and title
-- `PR` when `gh pr view` can resolve one
+- `PR` when `gh pr view` can resolve one or the Linear issue has a GitHub pull request attachment
 - `Attempt`, `Due`, and `Error` for retry/blocked events
 
 Low-level Codex fields such as message IDs, event names, timestamps, and workspace paths are omitted.

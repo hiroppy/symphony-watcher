@@ -71,7 +71,7 @@ async function enrichEvent(event, config) {
     maxAttempts: isEnded ? (config.endedLinearMaxAttempts ?? 2) : 1,
     retryDelayMs: isEnded ? (config.endedLinearRetryDelayMs ?? 5_000) : 0,
   });
-  const pullRequest = await findPullRequest(event);
+  const pullRequest = await findPullRequest(event) ?? linearIssue?.pullRequest;
   return compactObject({
     ...event,
     issueTitle: linearIssue?.title,
