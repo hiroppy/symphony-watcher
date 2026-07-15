@@ -46,6 +46,8 @@ The notification body intentionally stays compact:
 - `Event` (the watcher transition that triggered the notification)
 - compact `PR#123 | Linear#ENG-62` links on one line when available
 - `Attempt`, `Due`, and `Error` for retry/blocked events
+- relative retry delay and blocked duration when Symphony provides the required timestamps
+- `Runtime`, `Turns`, and `Tokens` for ended or `In Review` events
 
 Low-level Codex fields such as message IDs, event names, timestamps, and workspace paths are omitted.
 Notifications show the current Linear state and project on the first line. The watcher event that

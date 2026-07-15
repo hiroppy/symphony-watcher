@@ -117,12 +117,28 @@ function toEvent(type, service, row, linearBaseUrl) {
     message: row.last_message ?? row.error ?? null,
     activity: activityFor(row.last_message),
     workspacePath: row.workspace_path ?? null,
+    startedAt: row.started_at ?? null,
+    blockedAt: row.blocked_at ?? null,
+    turnCount: row.turn_count ?? null,
+    tokens: tokensFor(row.tokens),
     lastEvent: row.last_event ?? null,
     lastEventAt: row.last_event_at ?? row.blocked_at ?? row.due_at ?? null,
     attempt: row.attempt ?? null,
     dueAt: row.due_at ?? null,
     error: row.error ?? null,
   });
+}
+
+function tokensFor(tokens) {
+  if (!tokens || typeof tokens !== "object") return null;
+
+  const normalized = compactObject({
+    input: tokens.input_tokens ?? tokens.inputTokens ?? null,
+    output: tokens.output_tokens ?? tokens.outputTokens ?? null,
+    total: tokens.total_tokens ?? tokens.totalTokens ?? null,
+  });
+
+  return Object.keys(normalized).length > 0 ? normalized : null;
 }
 
 function issueIdentifierFor(row) {

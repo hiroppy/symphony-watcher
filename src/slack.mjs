@@ -19,7 +19,7 @@ const LINEAR_STATE_STYLES = {
   unavailable: { emoji: "⚠️", color: "#F59E0B" },
 };
 
-export function buildSlackPayload(event, { inReviewMention } = {}) {
+export function buildSlackPayload(event, { inReviewMention, now = new Date() } = {}) {
   const issueLabel = formatIssueLabel(event);
   const titleUrl = event.pullRequest?.url ?? event.issueUrl;
   const linkedIssue = titleUrl
@@ -27,7 +27,7 @@ export function buildSlackPayload(event, { inReviewMention } = {}) {
     : escapeSlack(issueLabel);
   const blocks = [
     sectionBlock(`*${linkedIssue}*`),
-    sectionBlock(eventDetails(event).join("\n")),
+    sectionBlock(eventDetails(event, now).join("\n")),
   ];
 
   return {
@@ -54,7 +54,7 @@ function sectionBlock(text) {
   };
 }
 
-function eventDetails(event) {
+function eventDetails(event, now) {
   const links = [
     event.pullRequest ? formatPullRequest(event.pullRequest) : null,
     event.issueUrl ? `<${event.issueUrl}|Linear#${escapeSlack(event.issueIdentifier)}>` : null,
@@ -65,10 +65,79 @@ function eventDetails(event) {
     event.activity && event.type !== "ended" ? `*Activity:* ${escapeSlack(event.activity)}` : null,
     event.attempt ? `*Attempt:* ${event.attempt}` : null,
     event.dueAt ? `*Due:* ${escapeSlack(event.dueAt)}` : null,
+    retryInDetail(event, now),
+    blockedForDetail(event, now),
+    completionStatsDetail(event, now),
     event.error ? `*Error:* ${escapeSlack(event.error)}` : null,
   ].filter(Boolean);
 
   return linkLine ? [linkLine, "", ...details] : details;
+}
+
+function completionStatsDetail(event, now) {
+  if (event.type !== "ended" && !isInReview(event)) return null;
+
+  const stats = [
+    durationBetween(event.startedAt, now, "Runtime"),
+    positiveNumber(event.turnCount) ? `*Turns:* ${formatNumber(event.turnCount)}` : null,
+    positiveNumber(event.tokens?.total) ? `*Tokens:* ${formatCompactNumber(event.tokens.total)}` : null,
+  ].filter(Boolean);
+
+  return stats.length > 0 ? stats.join(" · ") : null;
+}
+
+function blockedForDetail(event, now) {
+  if (event.type !== "blocked") return null;
+  return durationBetween(event.blockedAt, now, "Blocked for");
+}
+
+function retryInDetail(event, now) {
+  if (event.type !== "retrying") return null;
+  return durationBetween(now, event.dueAt, "Retry in");
+}
+
+function durationBetween(start, end, label) {
+  const startMs = dateMilliseconds(start);
+  const endMs = dateMilliseconds(end);
+  if (startMs === null || endMs === null || endMs < startMs) return null;
+
+  return `*${label}:* ${formatDuration(Math.floor((endMs - startMs) / 1_000))}`;
+}
+
+function dateMilliseconds(value) {
+  if (!value) return null;
+  const milliseconds = value instanceof Date ? value.getTime() : Date.parse(value);
+  return Number.isFinite(milliseconds) ? milliseconds : null;
+}
+
+function formatDuration(totalSeconds) {
+  if (totalSeconds < 60) return `${totalSeconds}s`;
+
+  const totalMinutes = Math.floor(totalSeconds / 60);
+  if (totalMinutes < 60) return `${totalMinutes}m`;
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+}
+
+function positiveNumber(value) {
+  return Number.isFinite(Number(value)) && Number(value) > 0;
+}
+
+function formatNumber(value) {
+  return Math.trunc(Number(value)).toLocaleString("en-US");
+}
+
+function formatCompactNumber(value) {
+  const number = Number(value);
+  if (number < 1_000) return formatNumber(number);
+  if (number < 1_000_000) return `${stripTrailingZero((number / 1_000).toFixed(1))}k`;
+  return `${stripTrailingZero((number / 1_000_000).toFixed(1))}m`;
+}
+
+function stripTrailingZero(value) {
+  return value.endsWith(".0") ? value.slice(0, -2) : value;
 }
 
 function formatIssueLabel(event) {

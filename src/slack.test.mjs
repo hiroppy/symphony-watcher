@@ -207,4 +207,56 @@ describe("buildSlackPayload", () => {
       ].join("\n"),
     );
   });
+
+  it("shows runtime, turns, and tokens only for ended or in-review notifications", () => {
+    const now = new Date("2026-06-12T06:48:00Z");
+    const metrics = {
+      startedAt: "2026-06-12T05:30:00Z",
+      turnCount: 7,
+      tokens: { total: 42_300 },
+    };
+    const ended = buildSlackPayload({
+      type: "ended",
+      service: "serviceA",
+      issueIdentifier: "ENG-62",
+      ...metrics,
+    }, { now });
+    const inReview = buildSlackPayload({
+      type: "updated",
+      service: "serviceA",
+      issueIdentifier: "ENG-62",
+      resolvedState: "In Review",
+      ...metrics,
+    }, { now });
+    const started = buildSlackPayload({
+      type: "started",
+      service: "serviceA",
+      issueIdentifier: "ENG-62",
+      ...metrics,
+    }, { now });
+
+    const expected = "*Runtime:* 1h 18m · *Turns:* 7 · *Tokens:* 42.3k";
+    assert.ok(ended.attachments[0].blocks[1].text.text.includes(expected));
+    assert.ok(inReview.attachments[0].blocks[1].text.text.includes(expected));
+    assert.ok(!started.attachments[0].blocks[1].text.text.includes("Runtime"));
+  });
+
+  it("shows blocked duration and relative retry delay", () => {
+    const now = new Date("2026-06-12T06:48:00Z");
+    const blocked = buildSlackPayload({
+      type: "blocked",
+      service: "serviceA",
+      issueIdentifier: "ENG-62",
+      blockedAt: "2026-06-12T06:36:00Z",
+    }, { now });
+    const retrying = buildSlackPayload({
+      type: "retrying",
+      service: "serviceA",
+      issueIdentifier: "ENG-63",
+      dueAt: "2026-06-12T06:48:30Z",
+    }, { now });
+
+    assert.ok(blocked.attachments[0].blocks[1].text.text.includes("*Blocked for:* 12m"));
+    assert.ok(retrying.attachments[0].blocks[1].text.text.includes("*Retry in:* 30s"));
+  });
 });
