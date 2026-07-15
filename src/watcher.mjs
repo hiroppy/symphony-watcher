@@ -77,7 +77,6 @@ async function enrichEvent(event, config) {
     issueTitle: linearIssue?.title,
     issueUrl: linearIssue?.url ?? event.issueUrl,
     resolvedState: linearIssue?.state,
-    resolvedStateType: linearIssue?.stateType,
     pullRequest,
   });
 }

@@ -56,7 +56,7 @@ describe("runOnce", () => {
 
       const output = JSON.parse(lines[0]);
       assert.equal(output.event.issueTitle, "Show Linear titles in Slack");
-      assert.equal(output.slack.text, "🔵 In Progress · [*serviceA*]");
+      assert.equal(output.slack.text, "🚧 In Progress · [*serviceA*]");
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
@@ -225,7 +225,7 @@ describe("runOnce", () => {
         url: "https://github.com/example/example-service/pull/456",
         number: 456,
       });
-      assert.match(output.slack.attachments[0].blocks[1].text.text, /\*PR:\* <https:\/\/github\.com\/example\/example-service\/pull\/456\|#456>/);
+      assert.match(output.slack.attachments[0].blocks[1].text.text, /<https:\/\/github\.com\/example\/example-service\/pull\/456\|PR#456>/);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

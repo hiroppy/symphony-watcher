@@ -4,22 +4,22 @@ import { describe, it } from "node:test";
 import { buildSlackPayload } from "./slack.mjs";
 
 describe("buildSlackPayload", () => {
-  it("uses an emoji label for every event status", () => {
+  it("uses a neutral label when the Linear state is unavailable", () => {
     const cases = [
-      [{ type: "started" }, "🟢 Started"],
-      [{ type: "updated" }, "🔵 Updated"],
-      [{ type: "retrying" }, "🟠 Retrying"],
-      [{ type: "blocked" }, "🔴 Blocked"],
-      [{ type: "ended" }, "✅ Ended"],
+      [{ type: "started" }, "❔ Unknown"],
+      [{ type: "updated" }, "❔ Unknown"],
+      [{ type: "retrying", state: "unavailable" }, "⚠️ unavailable"],
+      [{ type: "blocked" }, "❔ Unknown"],
+      [{ type: "ended" }, "❔ Unknown"],
       [{ type: "ended", resolvedState: "Done" }, "✅ Done"],
       [{ type: "ended", resolvedState: "In Review" }, "👀 In Review"],
     ];
 
     for (const [status, expected] of cases) {
       const payload = buildSlackPayload({
-        ...status,
         service: "serviceA",
         issueIdentifier: "ENG-62",
+        ...status,
       });
 
       assert.equal(payload.text, `${expected} · [*serviceA*]`);
@@ -28,9 +28,14 @@ describe("buildSlackPayload", () => {
 
   it("uses the current Linear state as the primary status", () => {
     const cases = [
-      [{ type: "started", state: "In Progress" }, "🔵 In Progress"],
-      [{ type: "updated", resolvedState: "In Review", resolvedStateType: "started" }, "👀 In Review"],
-      [{ type: "ended", resolvedState: "Done", resolvedStateType: "completed" }, "✅ Done"],
+      [{ type: "started", state: "Backlog" }, "📥 Backlog"],
+      [{ type: "started", state: "Todo" }, "📋 Todo"],
+      [{ type: "started", state: "In Progress" }, "🚧 In Progress"],
+      [{ type: "updated", resolvedState: "In Review" }, "👀 In Review"],
+      [{ type: "ended", resolvedState: "Done" }, "✅ Done"],
+      [{ type: "ended", resolvedState: "Canceled" }, "🚫 Canceled"],
+      [{ type: "updated", resolvedState: "QA" }, "❔ QA"],
+      [{ type: "updated", state: "Custom state" }, "❔ Custom state"],
     ];
 
     for (const [status, expected] of cases) {
@@ -65,26 +70,32 @@ describe("buildSlackPayload", () => {
     );
 
     assert.equal(inReview.text, "👀 In Review · [*serviceA*] <!subteam^S012AB3CD>");
-    assert.equal(inProgress.text, "🔵 In Progress · [*serviceA*]");
+    assert.equal(inProgress.text, "🚧 In Progress · [*serviceA*]");
   });
 
-  it("uses a color for every event status", () => {
+  it("uses Linear state colors and a neutral fallback", () => {
     const cases = [
-      [{ type: "started" }, "#06B6D4"],
-      [{ type: "updated" }, "#3B82F6"],
-      [{ type: "retrying" }, "#F59E0B"],
-      [{ type: "blocked" }, "#EF4444"],
+      [{ type: "started" }, "#6B7280"],
+      [{ type: "updated" }, "#6B7280"],
+      [{ type: "retrying" }, "#6B7280"],
+      [{ type: "blocked" }, "#6B7280"],
       [{ type: "ended" }, "#6B7280"],
+      [{ type: "started", state: "Backlog" }, "#64748B"],
+      [{ type: "started", state: "Todo" }, "#94A3B8"],
+      [{ type: "started", state: "In Progress" }, "#D88A2D"],
+      [{ type: "updated", state: "In Progress" }, "#D88A2D"],
+      [{ type: "blocked", state: "In Progress" }, "#D88A2D"],
       [{ type: "ended", resolvedState: "Done" }, "#8B5CF6"],
-      [{ type: "ended", resolvedState: "Released", resolvedStateType: "completed" }, "#8B5CF6"],
+      [{ type: "ended", resolvedState: "Released" }, "#6B7280"],
       [{ type: "ended", resolvedState: "In Review" }, "#22C55E"],
+      [{ type: "retrying", state: "unavailable", issueIdentifier: "watcher:serviceA" }, "#F59E0B"],
     ];
 
     for (const [status, expected] of cases) {
       const payload = buildSlackPayload({
-        ...status,
         service: "serviceA",
         issueIdentifier: "ENG-62",
+        ...status,
       });
 
       assert.equal(payload.attachments[0].color, expected);
@@ -108,8 +119,8 @@ describe("buildSlackPayload", () => {
       activity: "running tests",
     });
 
-    assert.equal(payload.text, "🔵 In Progress · [*serviceA*]");
-    assert.equal(payload.attachments[0].color, "#EF4444");
+    assert.equal(payload.text, "🚧 In Progress · [*serviceA*]");
+    assert.equal(payload.attachments[0].color, "#D88A2D");
     assert.deepEqual(payload.attachments[0].blocks[0], {
       type: "section",
       text: {
@@ -120,10 +131,10 @@ describe("buildSlackPayload", () => {
     assert.equal(
       payload.attachments[0].blocks[1].text.text,
       [
+        "<https://github.com/example/example-service/pull/123|PR#123>(OPEN, review required) | <https://linear.app/example/issue/ENG-62/example|Linear#ENG-62>",
+        "",
         "*Event:* Blocked",
         "*Activity:* running tests",
-        "*PR:* <https://github.com/example/example-service/pull/123|#123> (OPEN, review required)",
-        "*Linear:* <https://linear.app/example/issue/ENG-62/example|ENG-62: Show Linear titles in Slack>",
       ].join("\n"),
     );
     assert.ok(!payload.attachments[0].blocks[1].text.text.includes("Message:"));
@@ -157,8 +168,9 @@ describe("buildSlackPayload", () => {
         text: {
           type: "mrkdwn",
           text: [
+            "<https://linear.app/example/issue/ENG-65/example|Linear#ENG-65>",
+            "",
             "*Event:* Ended",
-            "*Linear:* <https://linear.app/example/issue/ENG-65/example|ENG-65>",
           ].join("\n"),
         },
       },
@@ -189,9 +201,9 @@ describe("buildSlackPayload", () => {
     assert.equal(
       payload.attachments[0].blocks[1].text.text,
       [
+        "<https://github.com/example/example-service/pull/123|PR#123>(OPEN, review required) | <https://linear.app/example/issue/ENG-62/example|Linear#ENG-62>",
+        "",
         "*Event:* Ended",
-        "*PR:* <https://github.com/example/example-service/pull/123|#123> (OPEN, review required)",
-        "*Linear:* <https://linear.app/example/issue/ENG-62/example|ENG-62: Show Linear titles in Slack>",
       ].join("\n"),
     );
   });

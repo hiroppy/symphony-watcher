@@ -44,20 +44,21 @@ uses that state in Slack, for example `In Review` or `Done`.
 The notification body intentionally stays compact:
 
 - `Event` (the watcher transition that triggered the notification)
-- `Linear` issue identifier and title
-- `PR` when `gh pr view` can resolve one or the Linear issue has a GitHub pull request attachment
+- compact `PR#123 | Linear#ENG-62` links on one line when available
 - `Attempt`, `Due`, and `Error` for retry/blocked events
 
 Low-level Codex fields such as message IDs, event names, timestamps, and workspace paths are omitted.
 Notifications show the current Linear state and project on the first line. The watcher event that
 triggered the notification, such as Started, Updated, or Ended, is shown separately in the body.
-When the Linear state is unavailable, the watcher event is used as the first-line fallback. Started
-is cyan, In Review is green, Updated is blue, Retrying is orange, Blocked is red, Done is purple, and an
-unresolved Ended event is gray. The attachment accent continues to represent the watcher event, so a
-blocked issue can show `🔵 In Progress` with a red accent and `Event: Blocked` in the body. The pull
+The first-line label and attachment accent represent the Linear state: Backlog is slate, Todo is gray, In Progress is orange,
+In Review is green, Done is purple, and Canceled is gray. This keeps the color stable across watcher
+events, so Started, Updated, and Blocked notifications for `🚧 In Progress` are all orange. Watcher
+events appear only in the `Event` detail. Service connection failures use `⚠️ Unavailable`, and a
+missing state uses the neutral `❔ Unknown` fallback. The pull
 request is shown before the Linear link so the next action is easy to find. The issue title links directly
-to the pull request when one is available, and falls back to Linear otherwise. Linear states use concise
-emoji labels such as `🔵 In Progress`, `👀 In Review`, and `✅ Done`.
+to the pull request when one is available, and falls back to Linear otherwise. Linear states use distinct
+emoji labels: `📥 Backlog`, `📋 Todo`, `🚧 In Progress`, `👀 In Review`, `✅ Done`, and
+`🚫 Canceled`. Unknown states use `❔` and a neutral gray accent.
 
 The watcher posts at most once for the same service, issue, and status. Activity changes inside the
 same status update `state.json` but do not create new Slack messages. A new Slack message is

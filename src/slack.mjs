@@ -1,21 +1,23 @@
-const STATUS_LABELS = {
-  started: "🟢 Started",
-  updated: "🔵 Updated",
-  retrying: "🟠 Retrying",
-  blocked: "🔴 Blocked",
-  ended: "✅ Ended",
+const EVENT_LABELS = {
+  started: "Started",
+  updated: "Updated",
+  retrying: "Retrying",
+  blocked: "Blocked",
+  ended: "Ended",
 };
 
-const STATUS_COLORS = {
-  started: "#06B6D4",
-  updated: "#3B82F6",
-  retrying: "#F59E0B",
-  blocked: "#EF4444",
-  ended: "#6B7280",
-};
+const DEFAULT_STATE_STYLE = { emoji: "❔", color: "#6B7280" };
 
-const REVIEW_COLOR = "#22C55E";
-const DONE_COLOR = "#8B5CF6";
+const LINEAR_STATE_STYLES = {
+  backlog: { emoji: "📥", color: "#64748B" },
+  todo: { emoji: "📋", color: "#94A3B8" },
+  "in progress": { emoji: "🚧", color: "#D88A2D" },
+  "in review": { emoji: "👀", color: "#22C55E" },
+  done: { emoji: "✅", color: "#8B5CF6" },
+  canceled: { emoji: "🚫", color: "#6B7280" },
+  cancelled: { emoji: "🚫", color: "#6B7280" },
+  unavailable: { emoji: "⚠️", color: "#F59E0B" },
+};
 
 export function buildSlackPayload(event, { inReviewMention } = {}) {
   const issueLabel = formatIssueLabel(event);
@@ -23,12 +25,10 @@ export function buildSlackPayload(event, { inReviewMention } = {}) {
   const linkedIssue = titleUrl
     ? `<${titleUrl}|${escapeSlack(issueLabel)}>`
     : escapeSlack(issueLabel);
-  const details = eventDetails(event, issueLabel);
-  const blocks = [sectionBlock(`*${linkedIssue}*`)];
-
-  if (details.length > 0) {
-    blocks.push(sectionBlock(details.join("\n")));
-  }
+  const blocks = [
+    sectionBlock(`*${linkedIssue}*`),
+    sectionBlock(eventDetails(event).join("\n")),
+  ];
 
   return {
     text: [
@@ -54,19 +54,21 @@ function sectionBlock(text) {
   };
 }
 
-function eventDetails(event, issueLabel) {
+function eventDetails(event) {
   const links = [
-    event.pullRequest ? `*PR:* ${formatPullRequest(event.pullRequest)}` : null,
-    event.issueUrl ? `*Linear:* <${event.issueUrl}|${escapeSlack(issueLabel)}>` : null,
-  ];
-  return [
+    event.pullRequest ? formatPullRequest(event.pullRequest) : null,
+    event.issueUrl ? `<${event.issueUrl}|Linear#${escapeSlack(event.issueIdentifier)}>` : null,
+  ].filter(Boolean);
+  const linkLine = links.join(" | ");
+  const details = [
     `*Event:* ${escapeSlack(eventLabel(event.type))}`,
     event.activity && event.type !== "ended" ? `*Activity:* ${escapeSlack(event.activity)}` : null,
-    ...links,
     event.attempt ? `*Attempt:* ${event.attempt}` : null,
     event.dueAt ? `*Due:* ${escapeSlack(event.dueAt)}` : null,
     event.error ? `*Error:* ${escapeSlack(event.error)}` : null,
   ].filter(Boolean);
+
+  return linkLine ? [linkLine, "", ...details] : details;
 }
 
 function formatIssueLabel(event) {
@@ -76,24 +78,23 @@ function formatIssueLabel(event) {
 function statusLabel(event) {
   const state = displayState(event);
 
-  if (!state || String(event.issueIdentifier).startsWith("watcher:")) {
-    return STATUS_LABELS[event.type] ?? event.type;
-  }
+  if (!state) return `${DEFAULT_STATE_STYLE.emoji} Unknown`;
 
-  if (state.toLowerCase() === "in review") return `👀 ${state}`;
-  if (event.resolvedStateType === "completed" || state.toLowerCase() === "done") return `✅ ${state}`;
-  return `🔵 ${state}`;
+  return `${stateStyle(state).emoji} ${state}`;
 }
 
 function eventLabel(type) {
-  const label = STATUS_LABELS[type] ?? type;
-  return label.replace(/^\S+\s+/, "");
+  return EVENT_LABELS[type] ?? type;
 }
 
 function statusColor(event) {
-  if (isInReview(event)) return REVIEW_COLOR;
-  if (event.resolvedStateType === "completed" || event.resolvedState?.toLowerCase() === "done") return DONE_COLOR;
-  return STATUS_COLORS[event.type] ?? STATUS_COLORS.ended;
+  return stateStyle(displayState(event)).color;
+}
+
+function stateStyle(state) {
+  const normalizedState = state?.trim().toLowerCase();
+
+  return LINEAR_STATE_STYLES[normalizedState] ?? DEFAULT_STATE_STYLE;
 }
 
 function displayState(event) {
@@ -105,20 +106,21 @@ function isInReview(event) {
 }
 
 function formatPullRequest(pullRequest) {
-  const label = pullRequest.number ? `#${pullRequest.number}` : pullRequestLabelFromUrl(pullRequest.url);
+  const number = pullRequest.number ?? pullRequestNumberFromUrl(pullRequest.url);
+  const label = number ? `PR#${number}` : "PR";
   const metadata = [
     pullRequest.state,
     pullRequest.isDraft ? "draft" : null,
     pullRequest.reviewDecision ? humanizeReviewDecision(pullRequest.reviewDecision) : null,
   ].filter(Boolean);
-  const suffix = metadata.length > 0 ? ` (${metadata.map(escapeSlack).join(", ")})` : "";
+  const suffix = metadata.length > 0 ? `(${metadata.map(escapeSlack).join(", ")})` : "";
 
   return `<${pullRequest.url}|${escapeSlack(label)}>${suffix}`;
 }
 
-function pullRequestLabelFromUrl(url) {
+function pullRequestNumberFromUrl(url) {
   const match = String(url).match(/\/pull\/(\d+)(?:$|[/?#])/);
-  return match ? `#${match[1]}` : url;
+  return match?.[1];
 }
 
 function humanizeReviewDecision(reviewDecision) {
