@@ -44,6 +44,30 @@ describe("buildSlackPayload", () => {
     }
   });
 
+  it("mentions the configured reviewer only for in review notifications", () => {
+    const inReview = buildSlackPayload(
+      {
+        type: "ended",
+        service: "serviceA",
+        issueIdentifier: "ENG-62",
+        resolvedState: "In Review",
+      },
+      { inReviewMention: "<!subteam^S012AB3CD>" },
+    );
+    const inProgress = buildSlackPayload(
+      {
+        type: "started",
+        service: "serviceA",
+        issueIdentifier: "ENG-62",
+        resolvedState: "In Progress",
+      },
+      { inReviewMention: "<!subteam^S012AB3CD>" },
+    );
+
+    assert.equal(inReview.text, "👀 In Review · [*serviceA*] <!subteam^S012AB3CD>");
+    assert.equal(inProgress.text, "🔵 In Progress · [*serviceA*]");
+  });
+
   it("uses a color for every event status", () => {
     const cases = [
       [{ type: "started" }, "#06B6D4"],

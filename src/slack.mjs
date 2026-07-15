@@ -17,7 +17,7 @@ const STATUS_COLORS = {
 const REVIEW_COLOR = "#22C55E";
 const DONE_COLOR = "#8B5CF6";
 
-export function buildSlackPayload(event) {
+export function buildSlackPayload(event, { inReviewMention } = {}) {
   const issueLabel = formatIssueLabel(event);
   const titleUrl = event.pullRequest?.url ?? event.issueUrl;
   const linkedIssue = titleUrl
@@ -31,7 +31,10 @@ export function buildSlackPayload(event) {
   }
 
   return {
-    text: `${statusLabel(event)} · [*${escapeSlack(event.service)}*]`,
+    text: [
+      `${statusLabel(event)} · [*${escapeSlack(event.service)}*]`,
+      isInReview(event) ? inReviewMention : null,
+    ].filter(Boolean).join(" "),
     attachments: [
       {
         color: statusColor(event),

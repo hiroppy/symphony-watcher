@@ -21,6 +21,11 @@ Keep `config.json` private because it contains credentials; it is excluded by `.
 `SLACK_WEBHOOK_URL` and `LINEAR_API_KEY` environment variables can override the corresponding
 config values when needed.
 
+Set `inReviewMention` to a Slack member mention such as `<@U012AB3CD>` or a user group mention
+such as `<!subteam^S012AB3CD>`. The watcher appends it only to notifications whose current Linear
+state is `In Review`. Omit the setting to disable review mentions. Member IDs can be copied from a
+Slack profile; user group IDs are available in the user group's Slack URL.
+
 ## Events
 
 - `started`: an issue appears in `running`

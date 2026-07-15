@@ -46,7 +46,9 @@ export async function runOnce({ config, statePath, slackWebhookUrl, dryRun = fal
 
   for (const event of events) {
     const enrichedEvent = await enrichEvent(event, config);
-    const slackPayload = buildSlackPayload(enrichedEvent);
+    const slackPayload = buildSlackPayload(enrichedEvent, {
+      inReviewMention: config.inReviewMention,
+    });
 
     if (dryRun) {
       console.log(JSON.stringify({ event: enrichedEvent, slack: slackPayload }, null, 2));
