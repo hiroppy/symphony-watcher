@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { findPullRequest } from "./lib/pull-request.mjs";
+import { findPullRequest } from "./pull-request.mjs";
 
 describe("findPullRequest", () => {
   it("returns null when the event has no workspace path", async () => {

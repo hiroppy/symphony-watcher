@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { buildSlackPayload } from "./lib/slack.mjs";
+import { buildSlackPayload } from "./slack.mjs";
 
 describe("buildSlackPayload", () => {
   it("uses an emoji label for every event status", () => {
@@ -13,6 +13,24 @@ describe("buildSlackPayload", () => {
       [{ type: "ended" }, "✅ Ended"],
       [{ type: "ended", resolvedState: "Done" }, "✅ Done"],
       [{ type: "ended", resolvedState: "In Review" }, "👀 In Review"],
+    ];
+
+    for (const [status, expected] of cases) {
+      const payload = buildSlackPayload({
+        ...status,
+        service: "serviceA",
+        issueIdentifier: "ENG-62",
+      });
+
+      assert.equal(payload.text, `${expected} · [*serviceA*]`);
+    }
+  });
+
+  it("uses the current Linear state as the primary status", () => {
+    const cases = [
+      [{ type: "started", state: "In Progress" }, "🔵 In Progress"],
+      [{ type: "updated", resolvedState: "In Review", resolvedStateType: "started" }, "👀 In Review"],
+      [{ type: "ended", resolvedState: "Done", resolvedStateType: "completed" }, "✅ Done"],
     ];
 
     for (const [status, expected] of cases) {
@@ -66,7 +84,7 @@ describe("buildSlackPayload", () => {
       activity: "running tests",
     });
 
-    assert.equal(payload.text, "🔴 Blocked · [*serviceA*]");
+    assert.equal(payload.text, "🔵 In Progress · [*serviceA*]");
     assert.equal(payload.attachments[0].color, "#EF4444");
     assert.deepEqual(payload.attachments[0].blocks[0], {
       type: "section",
@@ -78,14 +96,13 @@ describe("buildSlackPayload", () => {
     assert.equal(
       payload.attachments[0].blocks[1].text.text,
       [
-        "*State:* In Progress",
+        "*Event:* Blocked",
         "*Activity:* running tests",
         "*PR:* <https://github.com/example/example-service/pull/123|#123> (OPEN, review required)",
         "*Linear:* <https://linear.app/example/issue/ENG-62/example|ENG-62: Show Linear titles in Slack>",
       ].join("\n"),
     );
     assert.ok(!payload.attachments[0].blocks[1].text.text.includes("Message:"));
-    assert.ok(!payload.attachments[0].blocks[1].text.text.includes("Event:"));
     assert.ok(!payload.attachments[0].blocks[1].text.text.includes("At:"));
     assert.ok(!payload.attachments[0].blocks[1].text.text.includes("Workspace:"));
   });
@@ -115,7 +132,10 @@ describe("buildSlackPayload", () => {
         type: "section",
         text: {
           type: "mrkdwn",
-          text: "*Linear:* <https://linear.app/example/issue/ENG-65/example|ENG-65>",
+          text: [
+            "*Event:* Ended",
+            "*Linear:* <https://linear.app/example/issue/ENG-65/example|ENG-65>",
+          ].join("\n"),
         },
       },
     ]);
@@ -145,6 +165,7 @@ describe("buildSlackPayload", () => {
     assert.equal(
       payload.attachments[0].blocks[1].text.text,
       [
+        "*Event:* Ended",
         "*PR:* <https://github.com/example/example-service/pull/123|#123> (OPEN, review required)",
         "*Linear:* <https://linear.app/example/issue/ENG-62/example|ENG-62: Show Linear titles in Slack>",
       ].join("\n"),

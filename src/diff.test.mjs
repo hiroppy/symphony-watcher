@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { diffSnapshots } from "./lib/diff.mjs";
+import { diffSnapshots } from "./diff.mjs";
 
 const baseConfig = {
   services: [{ name: "serviceA", url: "http://127.0.0.1:4103/api/v1/state" }],

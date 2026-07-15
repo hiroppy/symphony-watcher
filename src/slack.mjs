@@ -56,12 +56,8 @@ function eventDetails(event, issueLabel) {
     event.pullRequest ? `*PR:* ${formatPullRequest(event.pullRequest)}` : null,
     event.issueUrl ? `*Linear:* <${event.issueUrl}|${escapeSlack(issueLabel)}>` : null,
   ];
-
-  if (isInReview(event)) return links.filter(Boolean);
-
-  const state = displayState(event);
   return [
-    state ? `*State:* ${escapeSlack(state)}` : null,
+    `*Event:* ${escapeSlack(eventLabel(event.type))}`,
     event.activity && event.type !== "ended" ? `*Activity:* ${escapeSlack(event.activity)}` : null,
     ...links,
     event.attempt ? `*Attempt:* ${event.attempt}` : null,
@@ -75,10 +71,20 @@ function formatIssueLabel(event) {
 }
 
 function statusLabel(event) {
-  if (isInReview(event)) return "👀 In Review";
+  const state = displayState(event);
 
-  if (event.type === "ended" && event.resolvedState) return `✅ ${event.resolvedState}`;
-  return STATUS_LABELS[event.type] ?? event.type;
+  if (!state || String(event.issueIdentifier).startsWith("watcher:")) {
+    return STATUS_LABELS[event.type] ?? event.type;
+  }
+
+  if (state.toLowerCase() === "in review") return `👀 ${state}`;
+  if (event.resolvedStateType === "completed" || state.toLowerCase() === "done") return `✅ ${state}`;
+  return `🔵 ${state}`;
+}
+
+function eventLabel(type) {
+  const label = STATUS_LABELS[type] ?? type;
+  return label.replace(/^\S+\s+/, "");
 }
 
 function statusColor(event) {

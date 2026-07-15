@@ -38,17 +38,21 @@ uses that state in Slack, for example `In Review` or `Done`.
 
 The notification body intentionally stays compact:
 
-- `State`
+- `Event` (the watcher transition that triggered the notification)
 - `Linear` issue identifier and title
 - `PR` when `gh pr view` can resolve one
 - `Attempt`, `Due`, and `Error` for retry/blocked events
 
 Low-level Codex fields such as message IDs, event names, timestamps, and workspace paths are omitted.
-Notifications use a status-colored accent with the status and project on the first line. Started
+Notifications show the current Linear state and project on the first line. The watcher event that
+triggered the notification, such as Started, Updated, or Ended, is shown separately in the body.
+When the Linear state is unavailable, the watcher event is used as the first-line fallback. Started
 is cyan, In Review is green, Updated is blue, Retrying is orange, Blocked is red, Done is purple, and an
-unresolved Ended event is gray. The pull request is shown before the Linear link so the next action is easy to find. The issue title links directly
-to the pull request when one is available, and falls back to Linear otherwise. Statuses use concise
-emoji labels such as `🟢 Started`, `👀 In Review`, `🔴 Blocked`, `🟠 Retrying`, and `✅ Done`.
+unresolved Ended event is gray. The attachment accent continues to represent the watcher event, so a
+blocked issue can show `🔵 In Progress` with a red accent and `Event: Blocked` in the body. The pull
+request is shown before the Linear link so the next action is easy to find. The issue title links directly
+to the pull request when one is available, and falls back to Linear otherwise. Linear states use concise
+emoji labels such as `🔵 In Progress`, `👀 In Review`, and `✅ Done`.
 
 The watcher posts at most once for the same service, issue, and status. Activity changes inside the
 same status update `state.json` but do not create new Slack messages. A new Slack message is

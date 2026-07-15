@@ -7,7 +7,7 @@ import { describe, it } from "node:test";
 import { runOnce } from "./watcher.mjs";
 
 describe("runOnce", () => {
-  it("enriches started events with the Linear issue title", async () => {
+  it("enriches started events with the Linear issue title", async (context) => {
     const dir = await mkdtemp(join(tmpdir(), "orchestrator-watcher-"));
     const statePath = join(dir, "state.json");
     const current = {
@@ -17,6 +17,24 @@ describe("runOnce", () => {
     };
 
     await writeFile(statePath, "{}");
+    const nativeFetch = globalThis.fetch;
+    context.mock.method(globalThis, "fetch", async (url, options) => {
+      if (String(url).startsWith("data:")) return nativeFetch(url, options);
+
+      return new Response(
+        JSON.stringify({
+          data: {
+            issue: {
+              identifier: "ENG-62",
+              title: "Show Linear titles in Slack",
+              state: { name: "In Progress", type: "started" },
+              url: "https://linear.app/example/issue/ENG-62/example",
+            },
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    });
 
     try {
       const originalLog = console.log;
@@ -31,23 +49,6 @@ describe("runOnce", () => {
           },
           statePath,
           dryRun: true,
-          fetch: async (url, options) => {
-            if (String(url).startsWith("data:")) return fetch(url, options);
-
-            return new Response(
-              JSON.stringify({
-                data: {
-                  issue: {
-                    identifier: "ENG-62",
-                    title: "Show Linear titles in Slack",
-                    state: { name: "In Progress", type: "started" },
-                    url: "https://linear.app/example/issue/ENG-62/example",
-                  },
-                },
-              }),
-              { status: 200, headers: { "content-type": "application/json" } },
-            );
-          },
         });
       } finally {
         console.log = originalLog;
@@ -55,7 +56,7 @@ describe("runOnce", () => {
 
       const output = JSON.parse(lines[0]);
       assert.equal(output.event.issueTitle, "Show Linear titles in Slack");
-      assert.equal(output.slack.text, "🟢 Started · [*serviceA*]");
+      assert.equal(output.slack.text, "🔵 In Progress · [*serviceA*]");
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
@@ -103,7 +104,7 @@ describe("runOnce", () => {
     }
   });
 
-  it("enriches ended events with current Linear state", async () => {
+  it("enriches ended events with current Linear state", async (context) => {
     const dir = await mkdtemp(join(tmpdir(), "orchestrator-watcher-"));
     const statePath = join(dir, "state.json");
     const previous = {
@@ -120,6 +121,24 @@ describe("runOnce", () => {
     };
 
     await writeFile(statePath, JSON.stringify(previous));
+    const nativeFetch = globalThis.fetch;
+    context.mock.method(globalThis, "fetch", async (url, options) => {
+      if (String(url).startsWith("data:")) return nativeFetch(url, options);
+
+      return new Response(
+        JSON.stringify({
+          data: {
+            issue: {
+              identifier: "ENG-62",
+              title: "Show Linear titles in Slack",
+              state: { name: "In Review", type: "started" },
+              url: "https://linear.app/example/issue/ENG-62/example",
+            },
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    });
 
     try {
       const originalLog = console.log;
@@ -136,23 +155,6 @@ describe("runOnce", () => {
           },
           statePath,
           dryRun: true,
-          fetch: async (url, options) => {
-            if (String(url).startsWith("data:")) return fetch(url, options);
-
-            return new Response(
-              JSON.stringify({
-                data: {
-                  issue: {
-                    identifier: "ENG-62",
-                    title: "Show Linear titles in Slack",
-                    state: { name: "In Review", type: "started" },
-                    url: "https://linear.app/example/issue/ENG-62/example",
-                  },
-                },
-              }),
-              { status: 200, headers: { "content-type": "application/json" } },
-            );
-          },
         });
       } finally {
         console.log = originalLog;
@@ -167,7 +169,7 @@ describe("runOnce", () => {
     }
   });
 
-  it("tries Linear at most twice by default for ended events", async () => {
+  it("tries Linear at most twice by default for ended events", async (context) => {
     const dir = await mkdtemp(join(tmpdir(), "orchestrator-watcher-"));
     const statePath = join(dir, "state.json");
     const previous = {
@@ -184,11 +186,18 @@ describe("runOnce", () => {
     };
 
     await writeFile(statePath, JSON.stringify(previous));
+    const nativeFetch = globalThis.fetch;
+    let linearAttempts = 0;
+    context.mock.method(globalThis, "fetch", async (url, options) => {
+      if (String(url).startsWith("data:")) return nativeFetch(url, options);
+
+      linearAttempts += 1;
+      return new Response("temporary failure", { status: 500 });
+    });
 
     try {
       const originalLog = console.log;
       console.log = () => {};
-      let linearAttempts = 0;
 
       try {
         await runOnce({
@@ -199,12 +208,6 @@ describe("runOnce", () => {
           },
           statePath,
           dryRun: true,
-          fetch: async (url, options) => {
-            if (String(url).startsWith("data:")) return fetch(url, options);
-
-            linearAttempts += 1;
-            return new Response("temporary failure", { status: 500 });
-          },
         });
       } finally {
         console.log = originalLog;
@@ -216,9 +219,12 @@ describe("runOnce", () => {
     }
   });
 
-  it("keeps running and reports a service as retrying when its status endpoint is unreachable", async () => {
+  it("keeps running and reports a service as retrying when its status endpoint is unreachable", async (context) => {
     const dir = await mkdtemp(join(tmpdir(), "orchestrator-watcher-"));
     const statePath = join(dir, "state.json");
+    context.mock.method(globalThis, "fetch", async () => {
+      throw new TypeError("fetch failed");
+    });
 
     try {
       const originalLog = console.log;
@@ -231,9 +237,6 @@ describe("runOnce", () => {
           },
           statePath,
           dryRun: true,
-          fetch: async () => {
-            throw new TypeError("fetch failed");
-          },
         });
 
         assert.deepEqual(result.events.map((event) => event.type), ["retrying"]);

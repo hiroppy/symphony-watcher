@@ -18,7 +18,6 @@ const ISSUE_STATE_QUERY = `
 
 export async function fetchLinearIssueState(issueIdentifier, options = {}) {
   const apiKey = Object.hasOwn(options, "apiKey") ? options.apiKey : process.env.LINEAR_API_KEY;
-  const fetchFn = options.fetch ?? fetch;
   const maxAttempts = options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
   const retryDelayMs = options.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS;
 
@@ -26,7 +25,7 @@ export async function fetchLinearIssueState(issueIdentifier, options = {}) {
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
-      const response = await fetchFn(LINEAR_ENDPOINT, {
+      const response = await fetch(LINEAR_ENDPOINT, {
         method: "POST",
         headers: {
           authorization: apiKey,

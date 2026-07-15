@@ -4,10 +4,10 @@ import { readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { diffSnapshots } from "./lib/diff.mjs";
-import { fetchLinearIssueState } from "./lib/linear.mjs";
-import { findPullRequest } from "./lib/pull-request.mjs";
-import { buildSlackPayload } from "./lib/slack.mjs";
+import { diffSnapshots } from "./diff.mjs";
+import { fetchLinearIssueState } from "./linear.mjs";
+import { findPullRequest } from "./pull-request.mjs";
+import { buildSlackPayload } from "./slack.mjs";
 
 const currentFile = fileURLToPath(import.meta.url);
 const scriptDirectory = dirname(currentFile);
@@ -39,13 +39,13 @@ async function main() {
   }
 }
 
-export async function runOnce({ config, statePath, slackWebhookUrl, dryRun = false, fetch: fetchFn = fetch }) {
+export async function runOnce({ config, statePath, slackWebhookUrl, dryRun = false }) {
   const previous = await readState(statePath);
-  const current = await collectSnapshots(config.services, fetchFn);
+  const current = await collectSnapshots(config.services);
   const events = diffSnapshots(previous, current, config);
 
   for (const event of events) {
-    const enrichedEvent = await enrichEvent(event, config, fetchFn);
+    const enrichedEvent = await enrichEvent(event, config);
     const slackPayload = buildSlackPayload(enrichedEvent);
 
     if (dryRun) {
@@ -62,11 +62,10 @@ export async function runOnce({ config, statePath, slackWebhookUrl, dryRun = fal
   return { events, current };
 }
 
-async function enrichEvent(event, config, fetchFn) {
+async function enrichEvent(event, config) {
   const isEnded = event.type === "ended";
   const linearIssue = await fetchLinearIssueState(event.issueIdentifier, {
     apiKey: config.linearApiKey,
-    fetch: fetchFn,
     maxAttempts: isEnded ? (config.endedLinearMaxAttempts ?? 2) : 1,
     retryDelayMs: isEnded ? (config.endedLinearRetryDelayMs ?? 5_000) : 0,
   });
@@ -81,11 +80,11 @@ async function enrichEvent(event, config, fetchFn) {
   });
 }
 
-async function collectSnapshots(services, fetchFn) {
+async function collectSnapshots(services) {
   const entries = await Promise.all(
     services.map(async (service) => {
       try {
-        const response = await fetchFn(service.url, {
+        const response = await fetch(service.url, {
           headers: { accept: "application/json" },
         });
 
