@@ -1,0 +1,17 @@
+{
+  "intervalMs": 30000,
+  "statePath": "state.json",
+  "slackWebhookUrl": "https://hooks.slack.com/services/REPLACE/WITH/YOUR_WEBHOOK",
+  "linearApiKey": "lin_api_REPLACE_WITH_YOUR_KEY",
+  "linearBaseUrl": "https://linear.app/YOUR_WORKSPACE/issue",
+  "services": [
+    {
+      "name": "service-a",
+      "url": "http://127.0.0.1:4101/api/v1/state"
+    },
+    {
+      "name": "service-b",
+      "url": "http://127.0.0.1:4102/api/v1/state"
+    }
+  ]
+}

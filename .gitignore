@@ -1,0 +1,23 @@
+# Local configuration and secrets
+.env
+.env.*
+config.json
+config.local.json
+
+# Runtime data
+state.json
+*.log
+*.pid
+*.plist
+*.tmp
+
+# Dependencies and test output
+node_modules/
+coverage/
+
+# Editor and operating-system files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
