@@ -2,6 +2,7 @@
   "intervalMs": 30000,
   "statePath": "state.json",
   "slackWebhookUrl": "https://hooks.slack.com/services/REPLACE/WITH/YOUR_WEBHOOK",
+  "inReviewMention": "<!subteam^S012AB3CD>",
   "linearApiKey": "lin_api_REPLACE_WITH_YOUR_KEY",
   "linearBaseUrl": "https://linear.app/YOUR_WORKSPACE/issue",
   "services": [

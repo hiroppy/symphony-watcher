@@ -150,6 +150,7 @@ describe("runOnce", () => {
           config: {
             services: [{ name: "serviceA", url: `data:application/json,${encodeURIComponent(JSON.stringify(current))}` }],
             linearApiKey: "lin_test",
+            inReviewMention: "<@U012AB3CD>",
             endedLinearMaxAttempts: 1,
             endedLinearRetryDelayMs: 0,
           },
@@ -163,7 +164,7 @@ describe("runOnce", () => {
       const output = JSON.parse(lines[0]);
       assert.equal(output.event.resolvedState, "In Review");
       assert.equal(output.event.issueTitle, "Show Linear titles in Slack");
-      assert.equal(output.slack.text, "👀 In Review · [*serviceA*]");
+      assert.equal(output.slack.text, "👀 In Review · [*serviceA*] <@U012AB3CD>");
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
