@@ -12,6 +12,7 @@ const LINEAR_STATE_STYLES = {
   backlog: { emoji: "📥", color: "#64748B" },
   todo: { emoji: "📋", color: "#94A3B8" },
   "in progress": { emoji: "🚧", color: "#D88A2D" },
+  rework: { emoji: "🔄", color: "#F7C8C1" },
   "in review": { emoji: "👀", color: "#22C55E" },
   done: { emoji: "✅", color: "#8B5CF6" },
   canceled: { emoji: "🚫", color: "#6B7280" },

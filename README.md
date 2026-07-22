@@ -53,13 +53,13 @@ Low-level Codex fields such as message IDs, event names, timestamps, and workspa
 Notifications show the current Linear state and project on the first line. The watcher event that
 triggered the notification, such as Started, Updated, or Ended, is shown separately in the body.
 The first-line label and attachment accent represent the Linear state: Backlog is slate, Todo is gray, In Progress is orange,
-In Review is green, Done is purple, and Canceled is gray. This keeps the color stable across watcher
+Rework uses the Linear workflow's pale red, In Review is green, Done is purple, and Canceled is gray. This keeps the color stable across watcher
 events, so Started, Updated, and Blocked notifications for `🚧 In Progress` are all orange. Watcher
 events appear only in the `Event` detail. Service connection failures use `⚠️ Unavailable`, and a
 missing state uses the neutral `❔ Unknown` fallback. The pull
 request is shown before the Linear link so the next action is easy to find. The issue title links directly
 to the pull request when one is available, and falls back to Linear otherwise. Linear states use distinct
-emoji labels: `📥 Backlog`, `📋 Todo`, `🚧 In Progress`, `👀 In Review`, `✅ Done`, and
+emoji labels: `📥 Backlog`, `📋 Todo`, `🚧 In Progress`, `🔄 Rework`, `👀 In Review`, `✅ Done`, and
 `🚫 Canceled`. Unknown states use `❔` and a neutral gray accent.
 
 The watcher posts at most once for the same service, issue, and status. Activity changes inside the
