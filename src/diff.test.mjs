@@ -181,6 +181,29 @@ describe("diffSnapshots", () => {
     assert.equal(diffSnapshots({}, current, baseConfig)[0].activity, "command execution started");
   });
 
+  it("uses a service-specific Linear URL fallback", () => {
+    const current = {
+      serviceB: {
+        running: [{ issue_identifier: "ALT-77", state: "In Progress" }],
+        retrying: [],
+        blocked: [],
+      },
+    };
+    const config = {
+      linearBaseUrl: "https://linear.app/example-one/issue",
+      services: [{
+        name: "serviceB",
+        url: "http://127.0.0.1:4104/api/v1/state",
+        linearBaseUrl: "https://linear.app/example-two/issue",
+      }],
+    };
+
+    assert.equal(
+      diffSnapshots({}, current, config)[0].issueUrl,
+      "https://linear.app/example-two/issue/ALT-77",
+    );
+  });
+
   it("omits activity for generic completed agent message events", () => {
     const current = {
       serviceA: {

@@ -21,6 +21,10 @@ Keep `config.json` private because it contains credentials; it is excluded by `.
 `SLACK_WEBHOOK_URL` and `LINEAR_API_KEY` environment variables can override the corresponding
 config values when needed.
 
+For services in different Linear workspaces, set `linearApiKey` and `linearBaseUrl` on the
+corresponding entry in `services`. Service-level values override the global values, while services
+without overrides continue to use the global configuration.
+
 Set `inReviewMention` to a Slack member mention such as `<@U012AB3CD>` or a user group mention
 such as `<!subteam^S012AB3CD>`. The watcher appends it only to notifications whose current Linear
 state is `In Review`. Omit the setting to disable review mentions. Member IDs can be copied from a

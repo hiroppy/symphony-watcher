@@ -19,7 +19,7 @@ export function diffSnapshots(previousByService, currentByService, config) {
     const current = normalizeSnapshot(currentByService?.[serviceName]);
     const previousStatuses = statusIndex(previous);
     const currentStatuses = statusIndex(current);
-    const linearBaseUrl = config.linearBaseUrl;
+    const linearBaseUrl = service.linearBaseUrl ?? config.linearBaseUrl;
 
     events.push(...diffRunning(serviceName, previousStatuses, current.running, linearBaseUrl));
     events.push(...diffList(serviceName, previousStatuses, "retrying", current.retrying, linearBaseUrl));

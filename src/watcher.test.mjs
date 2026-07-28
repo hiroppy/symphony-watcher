@@ -62,6 +62,64 @@ describe("runOnce", () => {
     }
   });
 
+  it("uses a service-specific Linear API key", async (context) => {
+    const dir = await mkdtemp(join(tmpdir(), "orchestrator-watcher-"));
+    const statePath = join(dir, "state.json");
+    const current = {
+      running: [{ issue_identifier: "ALT-77", state: "In Progress" }],
+      retrying: [],
+      blocked: [],
+    };
+    const authorizationHeaders = [];
+
+    await writeFile(statePath, "{}");
+    const nativeFetch = globalThis.fetch;
+    context.mock.method(globalThis, "fetch", async (url, options) => {
+      if (String(url).startsWith("data:")) return nativeFetch(url, options);
+
+      authorizationHeaders.push(options.headers.authorization);
+      return new Response(
+        JSON.stringify({
+          data: {
+            issue: {
+              identifier: "ALT-77",
+              title: "Use a service-specific Linear workspace",
+              state: { name: "In Progress", type: "started" },
+              url: "https://linear.app/example-two/issue/ALT-77/example",
+            },
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    });
+
+    try {
+      const originalLog = console.log;
+      console.log = () => {};
+
+      try {
+        await runOnce({
+          config: {
+            services: [{
+              name: "serviceB",
+              url: `data:application/json,${encodeURIComponent(JSON.stringify(current))}`,
+              linearApiKey: "lin_service",
+            }],
+            linearApiKey: "lin_default",
+          },
+          statePath,
+          dryRun: true,
+        });
+      } finally {
+        console.log = originalLog;
+      }
+
+      assert.deepEqual(authorizationHeaders, ["lin_service"]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("does not update state during dry-run", async () => {
     const dir = await mkdtemp(join(tmpdir(), "orchestrator-watcher-"));
     const statePath = join(dir, "state.json");

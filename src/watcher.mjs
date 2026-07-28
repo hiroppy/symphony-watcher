@@ -66,8 +66,9 @@ export async function runOnce({ config, statePath, slackWebhookUrl, dryRun = fal
 
 async function enrichEvent(event, config) {
   const isEnded = event.type === "ended";
+  const service = config.services.find(({ name }) => name === event.service);
   const linearIssue = await fetchLinearIssueState(event.issueIdentifier, {
-    apiKey: config.linearApiKey,
+    apiKey: service?.linearApiKey ?? config.linearApiKey,
     maxAttempts: isEnded ? (config.endedLinearMaxAttempts ?? 2) : 1,
     retryDelayMs: isEnded ? (config.endedLinearRetryDelayMs ?? 5_000) : 0,
   });
